@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Owner Orders | FoodExpress</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <style>
+    .order-card {
+      transition: all 0.3s ease-in-out;
+    }
+    .order-card:hover {
+      transform: scale(1.01);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    }
+  </style>
+</head>
+<body class="bg-light">
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-danger">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="dashboard.html">🍔 FoodExpress</a>
+      <button class="btn btn-outline-light" id="logoutBtn">Logout</button>
+    </div>
+  </nav>
+
+  <!-- Owner Orders Section -->
+  <section class="py-5">
+    <div class="container">
+      <h2 class="text-center text-danger mb-4">Customer Orders</h2>
+      <div id="ordersContainer" class="row">
+        <!-- Orders will be loaded here -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-dark text-white text-center py-3">
+    <p class="mb-0">© 2025 FoodExpress. All rights reserved.</p>
+  </footer>
+
+  <script>
+    const token = localStorage.getItem("access");
+
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      localStorage.clear();
+      window.location.href = "login.html";
+    });
+
+    async function loadOwnerOrders() {
+      try {
+        const res = await fetch("http://localhost:8000/api/orders/", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          }
+        });
+
+        if (!res.ok) throw new Error("Unauthorized or error fetching orders");
+        const orders = await res.json();
+
+        const container = document.getElementById("ordersContainer");
+        container.innerHTML = "";
+
+        if (orders.length === 0) {
+          container.innerHTML = `<p class="text-center text-muted">No orders found for your restaurant.</p>`;
+          return;
+        }
+
+        orders.forEach(order => {
+          let total = 0;
+          order.items.forEach(item => {
+            total += item.quantity * item.item.price;
+          });
+
+          container.innerHTML += `
+            <div class="col-md-6 mb-4">
+              <div class="card order-card p-3 shadow-sm">
+                <h5>Order #${order.id}</h5>
+                <p><strong>Customer:</strong> ${order.customer_name || "Anonymous"}</p>
+                <p><strong>Status:</strong> ${order.status}</p>
+                <p><strong>Date:</strong> ${new Date(order.created_at).toLocaleString()}</p>
+                <p><strong>Total:</strong> ₹${total.toFixed(2)}</p>
+              </div>
+            </div>
+          `;
+        });
+
+      } catch (error) {
+        document.getElementById("ordersContainer").innerHTML = `
+          <div class="alert alert-danger">Unable to load orders. Please try again later.</div>
+        `;
+        console.error("Failed to fetch owner orders:", error);
+      }
+    }
+
+    loadOwnerOrders();
+  </script>
+</body>
+</html>

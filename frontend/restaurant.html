@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Restaurant Details | FoodExpress</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body class="bg-light">
+  <nav class="navbar navbar-dark bg-danger px-3">
+    <a class="navbar-brand fw-bold text-white" href="restaurants.html"> FoodExpress</a>
+    <button class="btn btn-outline-light" id="logoutBtn">Logout</button>
+  </nav>
+
+  <div class="container py-4">
+    <h2 class="text-danger">OUR Menu</h2>
+    <div class="row mt-4" id="menuItems">
+      <p>Loading...</p>
+    </div>
+
+    <hr />
+
+    <!-- Upload dish section (owner-only) -->
+    <div id="dishUploadSection" style="display: none;">
+      <h4 class="text-danger">Upload New Dish</h4>
+      <form id="dishForm" class="mt-3">
+        <div class="mb-2">
+          <input type="text" class="form-control" id="name" placeholder="Dish Name" required />
+        </div>
+        <div class="mb-2">
+          <textarea class="form-control" id="description" placeholder="Description" required></textarea>
+        </div>
+        <div class="mb-2">
+          <input type="number" class="form-control" id="price" placeholder="Price" required />
+        </div>
+        <div class="mb-2">
+          <input type="file" class="form-control" id="image" accept="image/*" />
+        </div>
+        <button class="btn btn-warning" type="submit">Upload Dish</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const params = new URLSearchParams(window.location.search);
+      const restaurantId = params.get("id");
+      const token = localStorage.getItem("access");
+      const userEmail = localStorage.getItem("email");
+
+      const dishUploadSection = document.getElementById("dishUploadSection");
+      const dishForm = document.getElementById("dishForm");
+      const menuContainer = document.getElementById("menuItems");
+
+      if (!restaurantId) {
+        alert("Restaurant ID is missing!");
+        return;
+      }
+
+      try {
+        // Get public restaurant info + menu
+        const res = await fetch(`http://localhost:8000/api/public-menu/${restaurantId}/`);
+        const data = await res.json();
+        if (!res.ok && !data.menu) throw new Error();
+
+        const restaurant = data.restaurant;
+        const menuItems = data.menu;
+
+        // Show dish upload form only if logged in user is the owner
+        if (restaurant.owner_email === userEmail) {
+          dishUploadSection.style.display = "block";
+        }
+
+        menuContainer.innerHTML = "";
+
+        if (menuItems.length === 0) {
+          menuContainer.innerHTML = "<p>No dishes yet.</p>";
+        } else {
+          menuItems.forEach(item => {
+            const card = document.createElement("div");
+            card.className = "col-md-4 mb-4";
+            card.innerHTML = `
+              <div class="card shadow">
+                <img src="${item.image || 'https://source.unsplash.com/400x250/?food'}" class="card-img-top" alt="${item.name}">
+                <div class="card-body">
+                  <h5 class="card-title">${item.name}</h5>
+                  <p class="card-text">${item.description}</p>
+                  <h6 class="text-success">₹${item.price}</h6>
+                  ${restaurant.owner_email !== userEmail
+                    ? `<button class="btn btn-danger w-100 order-btn" data-id="${item.id}">Order Now</button>`
+                    : ''
+                  }
+                </div>
+              </div>
+            `;
+            menuContainer.appendChild(card);
+          });
+
+          // Attach order handler
+          document.querySelectorAll(".order-btn").forEach(btn => {
+            btn.addEventListener("click", async (e) => {
+              const itemId = e.target.getAttribute("data-id");
+              try {
+                const res = await fetch("http://localhost:8000/api/orders/", {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                  },
+                  body: JSON.stringify({
+                    items: [{ item_id: parseInt(itemId), quantity: 1 }],
+                    restaurant: parseInt(restaurantId)
+                  })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                  alert("Order placed successfully!");
+                } else {
+                  alert("Order failed: " + (data.detail || JSON.stringify(data)));
+                }
+              } catch (error) {
+                alert("Something went wrong!");
+              }
+            });
+          });
+        }
+
+        // Upload dish form submission (owner only)
+        if (dishForm) {
+          dishForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const name = document.getElementById("name").value.trim();
+            const description = document.getElementById("description").value.trim();
+            const price = document.getElementById("price").value;
+            const image = document.getElementById("image").files[0];
+
+            const formData = new FormData();
+            formData.append("name", name);
+            formData.append("description", description);
+            formData.append("price", price);
+            if (image) formData.append("image", image);
+
+            try {
+              const res = await fetch("http://localhost:8000/api/menu-items/", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+                body: formData
+              });
+
+              const data = await res.json();
+              if (res.ok) {
+                alert("Dish uploaded!");
+                window.location.reload();
+              } else {
+                alert("Failed to upload dish: " + (data.detail || JSON.stringify(data)));
+              }
+            } catch (error) {
+              alert("Server error. Try again later.");
+            }
+          });
+        }
+
+      } catch (err) {
+        console.error(err);
+        alert("Failed to load restaurant or menu.");
+      }
+    });
+
+    // Logout
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      localStorage.clear();
+      window.location.href = "login.html";
+    });
+  </script>
+</body>
+</html>

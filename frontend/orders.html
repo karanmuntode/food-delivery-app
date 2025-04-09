@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Orders | FoodExpress</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body {
+      background-color: #f9f9f9;
+    }
+    .order-card {
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+      background-color: #fff;
+    }
+    .order-header {
+      font-weight: bold;
+      font-size: 1.1rem;
+      color: #dc3545;
+    }
+    .item-name {
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-danger">
+    <div class="container">
+      <a class="navbar-brand fw-bold text-white" href="index.html">🍔 FoodExpress</a>
+      <button id="logoutBtn" class="btn btn-outline-light">Logout</button>
+    </div>
+  </nav>
+
+  <section class="container py-5">
+    <h2 class="text-danger mb-4">📦 My Orders</h2>
+    <div id="ordersList">
+      <!-- Orders will be loaded here -->
+    </div>
+  </section>
+
+  <footer class="bg-dark text-white text-center py-3">
+    <p class="mb-0">© 2025 FoodExpress. All rights reserved.</p>
+  </footer>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const token = localStorage.getItem("access");
+
+      if (!token) {
+        alert("Please log in to view your orders.");
+        window.location.href = "login.html";
+        return;
+      }
+
+      const logoutBtn = document.getElementById("logoutBtn");
+      logoutBtn.addEventListener("click", () => {
+        localStorage.clear();
+        window.location.href = "login.html";
+      });
+
+      const ordersList = document.getElementById("ordersList");
+
+      try {
+        const res = await fetch("http://localhost:8000/api/orders/", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const orders = await res.json();
+
+        if (orders.length === 0) {
+          ordersList.innerHTML = `<p class="text-muted">You haven’t placed any orders yet.</p>`;
+          return;
+        }
+
+        orders.forEach(order => {
+          let total = 0;
+          let itemsHtml = "";
+
+          order.items.forEach(item => {
+            total += item.quantity * item.item.price;
+
+            itemsHtml += `
+              <div class="d-flex justify-content-between">
+                <span class="item-name">${item.item.name} (x${item.quantity})</span>
+                <span>₹${(item.quantity * item.item.price).toFixed(2)}</span>
+              </div>
+            `;
+          });
+
+          ordersList.innerHTML += `
+            <div class="order-card">
+              <div class="order-header mb-2">
+                Order #${order.id} | ${new Date(order.created_at).toLocaleString()}
+              </div>
+              <div class="mb-2 text-muted">Status: <strong>${order.status}</strong></div>
+              ${itemsHtml}
+              <hr>
+              <div class="d-flex justify-content-between fw-bold">
+                <span>Total</span>
+                <span>₹${total.toFixed(2)}</span>
+              </div>
+            </div>
+          `;
+        });
+
+      } catch (error) {
+        console.error("Error loading orders:", error);
+        ordersList.innerHTML = `<div class="alert alert-danger">Failed to load your orders. Try again later.</div>`;
+      }
+    });
+  </script>
+
+</body>
+</html>

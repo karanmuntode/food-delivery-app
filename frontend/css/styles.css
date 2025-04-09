@@ -1,0 +1,29 @@
+:root {
+    --red: #E63946;
+    --yellow: #F1C40F;
+    --white: #ffffff;
+  }
+  
+  body {
+    font-family: 'Segoe UI', sans-serif;
+  }
+  
+  .bg-yellow {
+    background-color: var(--yellow);
+    color: var(--white);
+  }
+  
+  .hero-section {
+    background-image: url('../assets/images/food-hero.jpg');
+    background-size: cover;
+    background-position: center;
+    color: white;
+    text-shadow: 1px 1px 5px rgba(0,0,0,0.6);
+    animation: fadeIn 1s ease-in-out;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
